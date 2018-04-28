@@ -6,13 +6,13 @@
 FILE *fp;
 
 enum token_codes{
-//  0     1    2      3       4     5   6    7      8      9      10    11
+//0     1    2      3       4     5   6    7      8      9      10    11
   ID, BREAK, CHAR, DOUBLE, ELSE, FOR, IF, INT, RETURN, STRUCT, VOID, WHILE,
   //12        13       14       15
   CT_INT, CT_REAL, CT_CHAR, CT_STRING,
-    //16   17          18    19       20       21     22     23
+  //16   17          18    19       20       21     22     23
   COMMA, SEMICOLON, LPAR, RPAR, LBRACKET, RBRACKET, LACC, RACC,
-//  24   25  26    27   28   29   30   31     32    33      34    35    36        37      38
+//24   25  26    27   28   29   30   31     32    33      34    35    36        37      38
   ADD, SUB, MUL, DIV, DOT, AND, OR, NOT, ASSIGN, EQUAL, NOTEQ, LESS, LESSEQ, GREATER, GREATEREQ
   //END
 };
@@ -535,14 +535,19 @@ int main(int argc, char ** argv){
 
   int c;
   tokens = (Token *)malloc(1000*sizeof(Token));
+  /*
   while((c = fgetc(fp)) != EOF){
+    if(c == EOF)
+    break;
     ungetc(c,fp);
     printf("%d ",getNextToken(fp));
     //printf("HERE");
     //voiam sa fac printToken(getNextToken(fp))
     //getNextToken(fp,c);
-  }
-
+  }*/
+  while(getNextTokenfp(fp) != END);
+  printf("ALEX IS DONE");
+  showTokens();
 
 
   return 0;
