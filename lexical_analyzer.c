@@ -6,15 +6,16 @@
 FILE *fp;
 
 enum token_codes{
-//0     1    2      3       4     5   6    7      8      9      10    11
+//0   1      2     3       4     5    6   7    8       9       10    11
   ID, BREAK, CHAR, DOUBLE, ELSE, FOR, IF, INT, RETURN, STRUCT, VOID, WHILE,
-  //12        13       14       15
+//12      13       14       15
   CT_INT, CT_REAL, CT_CHAR, CT_STRING,
-  //16   17          18    19       20       21     22     23
+//16     17         18    19    20        21        22    23
   COMMA, SEMICOLON, LPAR, RPAR, LBRACKET, RBRACKET, LACC, RACC,
 //24   25  26    27   28   29   30   31     32    33      34    35    36        37      38
-  ADD, SUB, MUL, DIV, DOT, AND, OR, NOT, ASSIGN, EQUAL, NOTEQ, LESS, LESSEQ, GREATER, GREATEREQ
-  //END
+  ADD, SUB, MUL, DIV, DOT, AND, OR, NOT, ASSIGN, EQUAL, NOTEQ, LESS, LESSEQ, GREATER, GREATEREQ,
+//39 - EOF
+  END
 };
 
 void err(const char *fmt, ...) {
@@ -47,6 +48,7 @@ Token *addTk(int code)
   Token *tk;
   SAFEALLOC(tk,Token)
   tk->code=code;
+  printf("%d ", code);
   //tk->line=line;
   tk->next=NULL;
   if(lastToken){
@@ -66,14 +68,22 @@ Token *addTk2(int code,char *value)
   if(code == ID || code == CT_STRING){
     tk->text = (char*)malloc(strlen(value) * sizeof(char));
     strcpy(tk->text, value);
+    printf("%s ",tk->text);
   }
   if(code == CT_INT){
-    tk->text = (char*)malloc(strlen(value) * sizeof(char));
-    strcpy(tk->text, value);
+    tk-> integer = atoi(value);//(char*)malloc(strlen(value) * sizeof(char));
+    //strcpy(tk->integer, atoi(value));
+    printf("%d ",tk->integer);
   }
-  if(code == ID || code == CT_STRING){
-    tk->text = (char*)malloc(strlen(value) * sizeof(char));
-    strcpy(tk->text, value);
+  if(code == CT_REAL){
+    tk->real = atof(value); //(char*)malloc(strlen(value) * sizeof(char));
+    //strcpy(tk->real, value);
+    printf("%f ", tk->real);
+  }
+  if(code == CT_CHAR){
+    tk->character = value[0];//(char*)malloc(strlen(value) * sizeof(char));
+    //strcpy(tk->character, value);
+    printf("%c ",tk->character);
   }
   //tk->line=line;
   tk->next=NULL;
@@ -104,6 +114,7 @@ int getNextToken()
   char ch = fgetc(fp);
   char *token_name = (char *)malloc(256);
   int currentIndex = 0; //dimension of our "rule"
+  int flag = 0;
   if(ch == EOF){
     showTokens();
     exit(1);
@@ -125,6 +136,10 @@ int getNextToken()
           }
           ungetc(un_c,fp);
           //pCrtCh++; // consume the character and remains in state 0
+        }
+        else if(ch == '\0' || ch == -1){
+          addTk(END);
+          return END;
         }
         // O P E R A T O R S
         else if(ch=='+'){
@@ -284,30 +299,9 @@ int getNextToken()
           }
         }
         else if(ch == '\"'){ // CT_STRING
-          ch = fgetc(fp);
-          if(ch == '\\'){
-            strcpy(token_name + currentIndex, &ch);
-            currentIndex++;
-
-            ch = fgetc(fp);
-            if(strchr("abfntrv\'?\"\\0"),ch){
-              strcpy(token_name + currentIndex, &ch);
-              currentIndex++;
-            }else tkerr("Invalid character construction");
-          }
-          else{
-            if(ch == '\"'){
-              token_name[currentIndex] = '\0'; //form CT_STRING
-              //ungetc(ch,fp);
-              addTk2(CT_STRING,token_name);
-              return CT_STRING;
-            }else{ // ... [^ " \\]* ["]
-              strcpy(token_name + currentIndex, &ch);
-              currentIndex++;
-            }
-          }
+          state = 11;
         }
-        else if(ch == '\''){
+        else if(ch == '\''){ // CT_CHAR
           state=9;
         }
         break;
@@ -412,7 +406,7 @@ int getNextToken()
           strcpy(token_name + currentIndex, &ch);
           currentIndex++;
           ch = fgetc(fp);
-          if(strchr("abfntrv\'?\"\\0"),ch){
+          if(strchr("abfntrv\'?\"\\0",ch)){
             strcpy(token_name + currentIndex, &ch);
             currentIndex++;
             ch = fgetc(fp);
@@ -459,8 +453,38 @@ int getNextToken()
           return ID;
         }
         break;
+        case 11:
+        if (ch == '\\') {
+          strcpy(token_name + currentIndex, &ch);
+          currentIndex++;
+          ch = fgetc(fp);
+          if (strchr("abfnrtv'?\"\\0", ch)) {
+            strcpy(token_name + currentIndex, &ch);
+            currentIndex++;
+          }
+          else
+          tkerr("Invalid character \'\\\'");
+        }
+        else {
+          if (ch == '\"') {
+            token_name[currentIndex] = '\0';
+            addTk2(CT_STRING, token_name);
+            return CT_STRING;
+          }
+          else {
+            strcpy(token_name + currentIndex, &ch);
+            currentIndex++;
+          }
+        }
+        break;
       }//aici?
+
       ch = fgetc(fp);
+      if(ch == EOF) flag++;
+      if(flag > 2){
+        addTk(END);
+        return END;
+      }
   }
 }
 
@@ -513,10 +537,10 @@ void printTokens(int code){
 void showTokens() {
     Token* p = tokens;
     while(p) {
-        printf("%d",p->code);
-        if(p->code == ID || p->code == CT_CHAR || p->code == CT_STRING) printf(":%s",p->text);
-        else if(p->code == CT_INT) printf(":%ld",p->integer);
-        else if(p->code == CT_REAL) printf(":%lf",p->real);
+        printf("(%d",p->code);
+        if(p->code == ID || p->code == CT_CHAR || p->code == CT_STRING) printf(":%s)",p->text);
+        else if(p->code == CT_INT) printf(":%ld)",p->integer);
+        else if(p->code == CT_REAL) printf(":%lf)",p->real);
         printf(" ");
         p = p->next;
     }
@@ -545,9 +569,9 @@ int main(int argc, char ** argv){
     //voiam sa fac printToken(getNextToken(fp))
     //getNextToken(fp,c);
   }*/
-  while(getNextTokenfp(fp) != END);
+  while(getNextToken(fp) != END);
   printf("ALEX IS DONE");
-  showTokens();
+  //showTokens();
 
 
   return 0;
