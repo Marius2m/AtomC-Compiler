@@ -505,15 +505,15 @@ Token *currentTk = NULL;
 int rule_unit();        //DONE
 int rule_declStruct();  //DONE
 int rule_declVar();     //DONE
-int rule_typeBase();
-int rule_arrayDecl();
-int rule_typeName();
-int rule_declFunc();
-int rule_funcArg();
-int rule_stm();
-int rule_stmCompound();
-int rule_expr();
-int rule_exprAssign();
+int rule_typeBase();    //DONE
+int rule_arrayDecl();   //DONE
+int rule_typeName();    //DONE
+int rule_declFunc();    //DONE but not sure if ok
+int rule_funcArg();     //DONE
+int rule_stm();         //DONE but needs re-check
+int rule_stmCompound(); //DONE
+int rule_expr();        //DONE
+int rule_exprAssign();  //DONE but needs re-check
 int rule_exprOr();
 int rule_exprOr_2();
 int rule_exprAnd();
@@ -593,6 +593,228 @@ int rule_declVar(){ //need to re-look here
 
   return 0;
 }
+
+int rule_typeBase(){
+  Token *startTk = currentTk;
+
+  if(consume(INT)) return 1;
+  if(consume(DOUBLE)) return 1;
+  if(consume(CHAR)) return 1;
+  if(consume(STRUCT)){
+    if(consume(ID)){
+      return 1;
+    }
+    else tkerr(currentTk, "Missing ID after STRUCT.");
+  }
+  currentTk = startTk;
+
+  return 0;
+}
+
+int rule_arrayDecl(){
+  Token *startTk = currentTk;
+  if(consume(LBRACKET)){
+    rule_expr();
+    if(consume(RBRACKET)){
+      return 1;
+    }
+    else tkerr(currentTk, "Missing RBRACKET after array declaration.");
+  }
+  currentTk = startTk;
+
+  return 0;
+}
+
+int rule_typeName(){
+  if(rule_typeBase()){
+    rule_arrayDecl();
+    return 1;
+  }
+
+  return 0;
+}
+
+int rule_declFunc_helper(){
+  Token *startTk = currentTk;
+
+  if(consume(ID)){
+    if(consume(LPAR)){
+      if(rule_funcArg()){
+        while(1){
+          if(consume(COMMA)){
+            if(rule_funcArg()){
+              return 1; //continue ?
+            }else tkerr(currentTk, "Missing FUNC_ARG for function declaration.");
+          }else break;
+        }
+      }
+      if(consume(RPAR)){
+        if(rule_stmCompound())
+          return 1;
+        else tkerr(currentTk, "Missing stmCompound for function declaration.")
+      }else tkerr(currentTk, "Missing RPAR for function declaration.")
+    }
+  }
+  currentTk = startTk;
+
+  return 0;
+}
+
+int rule_declFunc(){
+  Token *startTk = currentTk;
+
+  if(rule_typeBase()){
+    consume(MUL);
+    if(!rule_declFunc_helper()){
+      currentTk = startTk; return 0;
+    }
+    return 1;
+  }
+  if(consume(VOID)){
+    if(!rule_declFunc_helper())
+      tkerr(currentTk, "Missing ID after VOID declaration.");
+    return 1;
+  }
+
+  return 0;
+}
+
+int rule_funcArg(){
+  Token *startTk = currentTk;
+
+  if(rule_typeBase()){
+    if(consume(ID)){
+      rule_arrayDecl();
+      return 1;
+    }else tkerr(currentTk, "Missing ID for function argument.");
+  }
+  currentTk = startTk;
+
+  return 0;
+}
+
+int rule_stm(){
+  Token *startTk = currentTk;
+
+  if(rule_stmCompound()) return 1;
+  //IF LPAR expr RPAR stm (ELSE stm)?
+  if(consume(IF)){
+    if(consume(LPAR)){
+      if(rule_expr()){
+        if(consume(RPAR)){
+          if(rule_stm()){
+            if(consumed(ELSE)){
+              if(rule_stm()) return 1;
+              else tkerr(currentTk, "Missing STM after else.");
+            }
+            return 1;
+          }else tkerr(currentTk, "Missing STM declaration.");
+        }else tkerr(currentTk, "Missing RPAR declaration.");
+      }else tkerr(currentTk, "Missing EXPR declaration.");
+    }else tkerr(currentTk, "Missing LPAR declaration.");
+  }
+  currentTk = startTk; //not sure if needed
+
+  //WHILE LPAR expr RPAR stm
+  if(consume(WHILE)){
+    if(consume(LPAR)){
+      if(rule_expr()){
+        if(consume(RPAR)){
+          if(rule_stm()){
+            return 1;
+          }else tkerr(currentTk, "Missing STM declaration.");
+        }else tkerr(currentTk, "Missing RPAR declaration.");
+      }else tkerr(currentTk, "Missing EXPR declaration.");
+    }else tkerr(currentTk, "Missing LPAR declaration.");
+  }
+  currentTk = startTk;
+
+  //FOR LPAR expr? SEMICOLON expr? SEMICOLON expr? RPAR stm
+  if(consume(FOR)){
+    if(!consume(LPAR)) tkerr(currentTk, "Missing LPAR declaration.");
+    rule_expr();
+    if(!consume(SEMICOLON)) tkerr(currentTk, "Missing SEMICOLON declaration.");
+    rule_expr();
+    if(!consume(SEMICOLON)) tkerr(currentTk, "Missing SEMICOLON declaration.");
+    rule_expr();
+    if(!consume(RPAR)) tkerr(currentTk, "Missing RPAR declaration.");
+    if(!rule_stm()) tkerr(currentTk, "Missing STM declaration.");
+    return 1;
+  }
+  currentTk = startTk;
+
+  //BREAK SEMICOLON
+  if(consume(BREAK)){
+    if(consumed(SEMICOLON))
+      return 1;
+    else tkerr(currentTk, "Missing SEMICOLON declaration.");
+  }
+  currentTk = startTk;
+
+  //RETURN expr? SEMICOLON
+  if(consume(RETURN)){
+    rule_expr();
+    if(consume(SEMICOLON)){
+      return 1;
+    }else tkerr(currentTk, "Missing SEMICOLON declaration.");
+  }
+  currentTk = startTk;
+
+  //expr? SEMICOLON
+  rule_expr();
+  if(consume(SEMICOLON)){
+    return 1;
+  }
+  currentTk = startTk;
+
+  return 0;
+}
+
+//LACC (declVar | stm)* RACC
+int rule_stmCompound(){
+    Token *startTk = currentTk;
+
+    if(consume(LACC)){
+      while(1){
+        if(rule_declVar()) continue;
+        if(rule_stm())     continue;
+        else break;
+      }
+      if(consume(RACC))
+        return 1;
+      else tkerr(currentTk, "Missing RACC declaration.");
+    }
+    currentTk = startTk;
+
+    return 0;
+}
+
+int rule_expr(){
+  Token *startTk = currentTk;
+
+  if(rule_exprAssign())
+    return 1;
+
+  return 0;
+}
+
+//exprUnary ASSIGN exprAssign | exprOR
+int rule_exprAssign(){
+  Token *startTk = currentTk;
+
+  if(rule_exprUnary()){
+    if(consume(ASSIGN)){
+      if(rule_exprAssign())
+        return 1;
+      else tkerr(currentTk, "Missing exprAssign declaration.");
+    }else tkerr(currentTk, "Missing ASSIGN declaration.")
+  }
+  if(rule_exprOr()) return 1;
+  currentTk = startTk;
+
+  return 0;
+}
+
 
 void start_lexor(Token *startTk){
   currentTk = startTk;
