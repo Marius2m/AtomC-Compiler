@@ -488,43 +488,6 @@ int getNextToken()
   }
 }
 
-// OLD CODE I HAVE NO IDE A - ALEXANDRA HELP
-      /*  else if(ch=='\n'){ // handled separately in order to update the current line
-          line++;
-          pCrtCh++;
-        }
-        else if(ch==0){ // the end of the input string
-          addTk(END);
-          return END;
-        }
-        else tkerr(addTk(END),"invalid character");
-        break;
-        case 1:
-        if(isalnum(ch)||ch=='_')pCrtCh++;
-        else state=2;
-        break;*/
-
-  /* TBH IDK
-      case 2:
-      nCh=pCrtCh-pStartCh; // the id length
-      // keywords tests
-      if(nCh==5&&!memcmp(pStartCh,"break",5))tk=addTk(BREAK);
-      else if(nCh==4&&!memcmp(pStartCh,"char",4))tk=addTk(CHAR);
-      // … all keywords …
-      else{ // if no keyword, then it is an ID
-        tk=addTk(ID);
-        tk->text=createString(pStartCh,pCrtCh);
-      }
-      return tk->code;
-      case 3:
-      if(ch=='='){
-        pCrtCh++;
-        state=4;
-      }
-
-    }
-  }
-}*/
 /*
 void printTokens(int code){
   switch(code){
@@ -534,6 +497,109 @@ void printTokens(int code){
     case 3:{printf (" DOUBLE "); break;}
   }
 }*/
+
+// PARSER
+Token *consumedTk;
+Token *currentTk = NULL;
+
+int rule_unit();        //DONE
+int rule_declStruct();  //DONE
+int rule_declVar();     //DONE
+int rule_typeBase();
+int rule_arrayDecl();
+int rule_typeName();
+int rule_declFunc();
+int rule_funcArg();
+int rule_stm();
+int rule_stmCompound();
+int rule_expr();
+int rule_exprAssign();
+int rule_exprOr();
+int rule_exprOr_2();
+int rule_exprAnd();
+int rule_exprAnd_2();
+int rule_exprEq();
+int rule_exprEq_2();
+int rule_exprRel();
+int rule_exprRel_2();
+int rule_exprAdd();
+int rule_exprAdd_2();
+int rule_exprMul();
+int rule_exprMul_2();
+int rule_exprCast();
+int rule_exprUnary();
+int rule_exprPostfix();
+int rule_exprPostfix_2();
+int rule_exprPrimary();
+//int rule_exprPrimary_2(); ???
+
+int consume(int code){
+  if(currentTk -> code  == code){
+    consumedTk = currentTk;
+    currentTk  = currentTk -> next;
+    return 1; // consumed => return true
+  }
+  return 0;  // don't consume it, position is unchanged => return false
+}
+
+int rule_unit(){
+  while(1){
+    if(rule_declStruct()) continue;
+    if(rule_funcArg())    continue;
+    if(rule_declVar())    continue;
+    break;
+  }
+  if(!consume(END)) tkerr(currentTk, "Missing END token");
+  return 1;
+}
+
+int rule_declStruct(){
+  Token *startTk = currentTk;
+
+  if(!consume(STRUCT)) return 0;
+  if(!consume(ID)) tkerr(currentTk, "Missing ID after STRUCT declaration.");
+  if(!consume(LACC)) { currentTk = startTk; return 0;} //tkerr...
+  while(1){
+    if(rule_declVar()) continue;
+    break;
+  }
+  if(!consume(RACC)) tkerr(currentTk, "Missing RACC after STRUCT declaration.");
+  if(!consume(SEMICOLON)) tkerr(currentTk, "Missing SEMICOLON after STRUCT declaration.");
+
+  return 1;
+}
+
+int rule_declVar(){ //need to re-look here
+  Token *startTk = currentTk;
+
+  if(rule_typeBase()){
+    if(consume(ID)){
+      rule_arrayDecl();
+      while(1){
+        if(consume(COMMA)){
+          if(consume(ID)){
+            rule_arrayDecl();
+            continue;
+          }else tkerr(currentTk, "Missing ID after COMMA in VAR declaration.");
+        }
+        break;
+      }
+      if(consume(SEMICOLON)) return 1;
+      else tkerr(currentTk, "Missing SEMICOLON after VAR declaration.");
+    }
+    else currentTk = startTk;
+  } // while is done
+  else currentTk = startTk;
+
+  return 0;
+}
+
+void start_lexor(Token *startTk){
+  currentTk = startTk;
+  if(rule_unit()) printf("ASYN DONE");
+  else tkerr(currentTk, "Error at ASYN");
+}
+// END OF PARSER
 void showTokens() {
     Token* p = tokens;
     while(p) {
