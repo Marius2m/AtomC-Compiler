@@ -514,20 +514,20 @@ int rule_stm();         //DONE but needs re-check
 int rule_stmCompound(); //DONE
 int rule_expr();        //DONE
 int rule_exprAssign();  //DONE but needs re-check
-int rule_exprOr();
-int rule_exprOr_2();
-int rule_exprAnd();
-int rule_exprAnd_2();
-int rule_exprEq();
-int rule_exprEq_2();
-int rule_exprRel();
-int rule_exprRel_2();
-int rule_exprAdd();
-int rule_exprAdd_2();
-int rule_exprMul();
-int rule_exprMul_2();
-int rule_exprCast();
-int rule_exprUnary();
+int rule_exprOr();      //DONE
+int rule_exprOr_2();    //DONE
+int rule_exprAnd();     //DONE
+int rule_exprAnd_2();   //DONE
+int rule_exprEq();      //DONE
+int rule_exprEq_2();    //DONE
+int rule_exprRel();     //DONE
+int rule_exprRel_2();   //DONE
+int rule_exprAdd();     //DONE
+int rule_exprAdd_2();   //DONE
+int rule_exprMul();     //DONE
+int rule_exprMul_2();   //DONE
+int rule_exprCast();    //DONE
+int rule_exprUnary();   //DONE
 int rule_exprPostfix();
 int rule_exprPostfix_2();
 int rule_exprPrimary();
@@ -815,6 +815,240 @@ int rule_exprAssign(){
   return 0;
 }
 
+int rule_exprOr_2(){
+  Token *startTk = currentTk;
+
+  if(consume(OR)){
+    if(rule_exprAnd()){
+      rule_exprOr_2()
+        return 1;
+    }else tkerr(currentTk, "Missing expression after OR.");
+  }
+  currentTk = startTk;
+
+  return 1;
+}
+
+int rule_exprOr(){
+  Token *startTk = currentTk;
+
+  if(rule_exprAnd()){
+    if(rule_exprOr_2())
+      return 1;
+    else tkerr(currentTk, "Incomplete OR expression.");
+  }
+
+  return 0;
+}
+
+int rule_exprAnd_2(){
+  Token *startTk = currentTk;
+
+  if(consume(AND)){
+    if(rule_exprEq()){
+      rule_exprAnd_2()
+      return 1;
+    }else tkerr(currentTk, "Missing expression after AND.");
+  }
+  currentTk = startTk;
+
+  return 1;
+}
+
+int rule_exprAnd(){
+  Token *startTk = currentTk;
+
+  if(rule_exprEq()){
+    if(rule_exprAnd_2())
+    return 1;
+    else tkerr(currentTk, "Incomplete EQ expression.");
+  }
+
+  return 0;
+}
+
+int rule_exprEq_2(){
+  Token *startTk = currentTk;
+
+  if(consume(EQUAL)){
+    if(rule_exprRel()){
+      rule_exprEq_2();
+      return 1;
+    }else tkerr("Missing REL expression.");
+  }
+
+  if(consume(NOTEQ)){
+    if(rule_exprRel()){
+      rule_exprEq_2();
+      return 1;
+    }else tkerr("Missing REL expression.");
+  }
+  currentTk = startTk;
+
+  return 1;
+}
+
+int rule_exprEq(){
+  Token *startTk = currentTk;
+
+  if(rule_exprRel()){
+    if(rule_exprEq_2())
+    return 1;
+    else tkerr(currentTk, "Incomplete EQ expression.");
+  }
+
+  return 0;
+}
+
+int rule_exprRel_3(){
+  if(consume(LESS))      return 1;
+  if(consume(LESSEQ))    return 1;
+  if(consume(GREATER))   return 1;
+  if(consume(GREATEREQ)) return 1;
+  return 0;
+}
+
+int rule_exprRel_2(){
+  Token *startTk = currentTk;
+
+  if(rule_exprRel_3()){
+    if(rule_exprAdd()){
+      rule_exprRel_2();
+      return 1;
+    }else tkerr(currentTk, "Missing ADD expression.");
+  }
+  currentTk = startTk;
+
+  return 1;
+}
+
+int rule_exprRel(){
+  Token *startTk = currentTk;
+
+  if(!rule_exprAdd()) return 0;
+  if(!rule_exprRel_2()) tkerr(currentTk, "Incomplete REL expression.");
+  currentTk = startTk;
+
+  return 0;
+}
+
+int rule_exprAdd_2(){
+  Token *startTk = currentTk;
+
+  if(consume(ADD)){
+    if(rule_exprAdd()){
+      rule_exprAdd_2();
+      return 1;
+    }else tkerr("Missing REL expression.");
+  }
+
+  if(consume(SUB)){
+    if(rule_exprAdd()){
+      rule_exprAdd_2();
+      return 1;
+    }else tkerr("Missing REL expression.");
+  }
+  currentTk = startTk;
+
+  return 1;
+}
+
+int rule_exprAdd(){
+  Token *startTk = currentTk;
+
+  if(rule_exprMul()){
+    if(rule_exprAdd_2())
+    return 1;
+    else tkerr(currentTk, "Incomplete ADD expression.");
+  }
+
+  return 0;
+}
+
+int rule_exprMul_2(){
+  Token *startTk = currentTk;
+
+  if(consume(MUL)){
+    if(rule_exprCast()){
+      rule_exprMul_2();
+      return 1;
+    }else tkerr("Missing REL expression.");
+  }
+
+  if(consume(DIV)){
+    if(rule_exprCast()){
+      rule_exprMul_2();
+      return 1;
+    }else tkerr("Missing REL expression.");
+  }
+  currentTk = startTk;
+
+  return 1;
+}
+
+int rule_exprMul(){
+  Token *startTk = currentTk;
+
+  if(rule_exprCast()){
+    if(rule_exprMul_2())
+    return 1;
+    else tkerr(currentTk, "Incomplete MUL expression.");
+  }
+
+  return 0;
+}
+
+//LPAR typeName RPAR exprCast | exprUnary
+int rule_exprCast(){
+  Token *startTk = currentTk;
+
+  if(consume(LPAR)){
+    if(rule_typeName()){
+      if(consume(RPAR)){
+        if(rule_exprCast)
+          return 1;
+        else tkerr("Incomplete CAST declaration.");
+      }else tkerr("Missing RPAR expression after cast declaration.");
+    }else tkerr("Missing TYPENAME expression after LPAR declaration.");
+  }
+  if(rule_exprUnary(){
+    return 1;
+  }
+  currentTk = startTk;
+
+  return 0;
+}
+
+// (SUB | NOT) exprUnary | exprPostfix
+int rule_exprUnary(){
+  Token *startTk = currentTk;
+
+  if(consume(SUB)){
+    if(rule_exprUnary())
+      return 1;
+    else tkerr(currentTk,"Missing UNARY expression.");
+  }
+
+  if(consume(NOT)){
+    if(rule_exprUnary())
+      return 1;
+    else tkerr(currentTk,"Missing UNARY expression.");
+  }
+
+  if(rule_exprPostfix()){
+    return 1;
+  }
+  currentTk = startTk;
+
+  return 0;
+}
+
+int rule_exprPostfix(){
+  if(!rule_exprPostfix()) return 0;
+  if(rule_exprPostfix_2()){
+    //blabla//
+  }
+}
 
 void start_lexor(Token *startTk){
   currentTk = startTk;
