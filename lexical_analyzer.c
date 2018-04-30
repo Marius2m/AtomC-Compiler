@@ -528,10 +528,9 @@ int rule_exprMul();     //DONE
 int rule_exprMul_2();   //DONE
 int rule_exprCast();    //DONE
 int rule_exprUnary();   //DONE
-int rule_exprPostfix();
-int rule_exprPostfix_2();
-int rule_exprPrimary();
-//int rule_exprPrimary_2(); ???
+int rule_exprPostfix(); //DONE but needs check
+int rule_exprPostfix_2(); //DONE but needs check
+int rule_exprPrimary(); //DONE but needs check
 
 int consume(int code){
   if(currentTk -> code  == code){
@@ -545,11 +544,11 @@ int consume(int code){
 int rule_unit(){
   while(1){
     if(rule_declStruct()) continue;
-    if(rule_funcArg())    continue;
+    if(rule_declFunc())    continue;
     if(rule_declVar())    continue;
     break;
   }
-  if(!consume(END)) tkerr(currentTk, "Missing END token");
+  if(!consume(END)) tkerr("Missing END token");
   return 1;
 }
 
@@ -557,14 +556,14 @@ int rule_declStruct(){
   Token *startTk = currentTk;
 
   if(!consume(STRUCT)) return 0;
-  if(!consume(ID)) tkerr(currentTk, "Missing ID after STRUCT declaration.");
+  if(!consume(ID)) tkerr("Missing ID after STRUCT declaration.");
   if(!consume(LACC)) { currentTk = startTk; return 0;} //tkerr...
   while(1){
     if(rule_declVar()) continue;
     break;
   }
-  if(!consume(RACC)) tkerr(currentTk, "Missing RACC after STRUCT declaration.");
-  if(!consume(SEMICOLON)) tkerr(currentTk, "Missing SEMICOLON after STRUCT declaration.");
+  if(!consume(RACC)) tkerr("Missing RACC after STRUCT declaration.");
+  if(!consume(SEMICOLON)) tkerr("Missing SEMICOLON after STRUCT declaration.");
 
   return 1;
 }
@@ -580,12 +579,12 @@ int rule_declVar(){ //need to re-look here
           if(consume(ID)){
             rule_arrayDecl();
             continue;
-          }else tkerr(currentTk, "Missing ID after COMMA in VAR declaration.");
+          }else tkerr("Missing ID after COMMA in VAR declaration.");
         }
         break;
       }
       if(consume(SEMICOLON)) return 1;
-      else tkerr(currentTk, "Missing SEMICOLON after VAR declaration.");
+      else tkerr("Missing SEMICOLON after VAR declaration.");
     }
     else currentTk = startTk;
   } // while is done
@@ -604,7 +603,7 @@ int rule_typeBase(){
     if(consume(ID)){
       return 1;
     }
-    else tkerr(currentTk, "Missing ID after STRUCT.");
+    else tkerr("Missing ID after STRUCT.");
   }
   currentTk = startTk;
 
@@ -618,7 +617,7 @@ int rule_arrayDecl(){
     if(consume(RBRACKET)){
       return 1;
     }
-    else tkerr(currentTk, "Missing RBRACKET after array declaration.");
+    else tkerr("Missing RBRACKET after array declaration.");
   }
   currentTk = startTk;
 
@@ -643,16 +642,17 @@ int rule_declFunc_helper(){
         while(1){
           if(consume(COMMA)){
             if(rule_funcArg()){
-              return 1; //continue ?
-            }else tkerr(currentTk, "Missing FUNC_ARG for function declaration.");
+              //return 1;
+              continue;
+            }else tkerr("Missing FUNC_ARG for function declaration.");
           }else break;
         }
       }
       if(consume(RPAR)){
-        if(rule_stmCompound())
+        if(rule_stmCompound()){
           return 1;
-        else tkerr(currentTk, "Missing stmCompound for function declaration.")
-      }else tkerr(currentTk, "Missing RPAR for function declaration.")
+        }else tkerr("Missing stmCompound for function declaration.");
+      }else tkerr("Missing RPAR for function declaration.");
     }
   }
   currentTk = startTk;
@@ -672,7 +672,7 @@ int rule_declFunc(){
   }
   if(consume(VOID)){
     if(!rule_declFunc_helper())
-      tkerr(currentTk, "Missing ID after VOID declaration.");
+      tkerr("Missing ID after VOID declaration.");
     return 1;
   }
 
@@ -686,7 +686,7 @@ int rule_funcArg(){
     if(consume(ID)){
       rule_arrayDecl();
       return 1;
-    }else tkerr(currentTk, "Missing ID for function argument.");
+    }else tkerr("Missing ID for function argument.");
   }
   currentTk = startTk;
 
@@ -703,15 +703,15 @@ int rule_stm(){
       if(rule_expr()){
         if(consume(RPAR)){
           if(rule_stm()){
-            if(consumed(ELSE)){
+            if(consume(ELSE)){
               if(rule_stm()) return 1;
-              else tkerr(currentTk, "Missing STM after else.");
+              else tkerr("Missing STM after else.");
             }
             return 1;
-          }else tkerr(currentTk, "Missing STM declaration.");
-        }else tkerr(currentTk, "Missing RPAR declaration.");
-      }else tkerr(currentTk, "Missing EXPR declaration.");
-    }else tkerr(currentTk, "Missing LPAR declaration.");
+          }else tkerr("Missing STM declaration.");
+        }else tkerr("Missing RPAR declaration.");
+      }else tkerr("Missing EXPR declaration.");
+    }else tkerr("Missing LPAR declaration.");
   }
   currentTk = startTk; //not sure if needed
 
@@ -722,32 +722,32 @@ int rule_stm(){
         if(consume(RPAR)){
           if(rule_stm()){
             return 1;
-          }else tkerr(currentTk, "Missing STM declaration.");
-        }else tkerr(currentTk, "Missing RPAR declaration.");
-      }else tkerr(currentTk, "Missing EXPR declaration.");
-    }else tkerr(currentTk, "Missing LPAR declaration.");
+          }else tkerr("Missing STM declaration.");
+        }else tkerr("Missing RPAR declaration.");
+      }else tkerr("Missing EXPR declaration.");
+    }else tkerr("Missing LPAR declaration.");
   }
   currentTk = startTk;
 
   //FOR LPAR expr? SEMICOLON expr? SEMICOLON expr? RPAR stm
   if(consume(FOR)){
-    if(!consume(LPAR)) tkerr(currentTk, "Missing LPAR declaration.");
+    if(!consume(LPAR)) tkerr("Missing LPAR declaration.");
     rule_expr();
-    if(!consume(SEMICOLON)) tkerr(currentTk, "Missing SEMICOLON declaration.");
+    if(!consume(SEMICOLON)) tkerr("Missing SEMICOLON declaration.");
     rule_expr();
-    if(!consume(SEMICOLON)) tkerr(currentTk, "Missing SEMICOLON declaration.");
+    if(!consume(SEMICOLON)) tkerr("Missing SEMICOLON declaration.");
     rule_expr();
-    if(!consume(RPAR)) tkerr(currentTk, "Missing RPAR declaration.");
-    if(!rule_stm()) tkerr(currentTk, "Missing STM declaration.");
+    if(!consume(RPAR)) tkerr("Missing RPAR declaration.");
+    if(!rule_stm()) tkerr("Missing STM declaration.");
     return 1;
   }
   currentTk = startTk;
 
   //BREAK SEMICOLON
   if(consume(BREAK)){
-    if(consumed(SEMICOLON))
+    if(consume(SEMICOLON))
       return 1;
-    else tkerr(currentTk, "Missing SEMICOLON declaration.");
+    else tkerr("Missing SEMICOLON declaration.");
   }
   currentTk = startTk;
 
@@ -756,17 +756,20 @@ int rule_stm(){
     rule_expr();
     if(consume(SEMICOLON)){
       return 1;
-    }else tkerr(currentTk, "Missing SEMICOLON declaration.");
+    }else tkerr("Missing SEMICOLON declaration.");
   }
   currentTk = startTk;
 
   //expr? SEMICOLON
-  rule_expr();
   if(consume(SEMICOLON)){
     return 1;
+  }else{ //CHANGED HERE
+    if(rule_expr()){
+      if(!consume(SEMICOLON)) tkerr("Missing SEMICOLON declaration");
+      return 1;
+    }
   }
   currentTk = startTk;
-
   return 0;
 }
 
@@ -782,7 +785,7 @@ int rule_stmCompound(){
       }
       if(consume(RACC))
         return 1;
-      else tkerr(currentTk, "Missing RACC declaration.");
+      else tkerr("Missing RACC declaration.");
     }
     currentTk = startTk;
 
@@ -806,12 +809,11 @@ int rule_exprAssign(){
     if(consume(ASSIGN)){
       if(rule_exprAssign())
         return 1;
-      else tkerr(currentTk, "Missing exprAssign declaration.");
-    }else tkerr(currentTk, "Missing ASSIGN declaration.")
+      else tkerr("Missing exprAssign declaration.");
+    }else tkerr("Missing ASSIGN declaration.");
   }
   if(rule_exprOr()) return 1;
   currentTk = startTk;
-
   return 0;
 }
 
@@ -820,9 +822,9 @@ int rule_exprOr_2(){
 
   if(consume(OR)){
     if(rule_exprAnd()){
-      rule_exprOr_2()
+      rule_exprOr_2();
         return 1;
-    }else tkerr(currentTk, "Missing expression after OR.");
+    }else tkerr("Missing expression after OR.");
   }
   currentTk = startTk;
 
@@ -835,7 +837,7 @@ int rule_exprOr(){
   if(rule_exprAnd()){
     if(rule_exprOr_2())
       return 1;
-    else tkerr(currentTk, "Incomplete OR expression.");
+    else tkerr("Incomplete OR expression.");
   }
 
   return 0;
@@ -846,9 +848,9 @@ int rule_exprAnd_2(){
 
   if(consume(AND)){
     if(rule_exprEq()){
-      rule_exprAnd_2()
+      rule_exprAnd_2();
       return 1;
-    }else tkerr(currentTk, "Missing expression after AND.");
+    }else tkerr("Missing expression after AND.");
   }
   currentTk = startTk;
 
@@ -861,7 +863,7 @@ int rule_exprAnd(){
   if(rule_exprEq()){
     if(rule_exprAnd_2())
     return 1;
-    else tkerr(currentTk, "Incomplete EQ expression.");
+    else tkerr("Incomplete EQ expression.");
   }
 
   return 0;
@@ -894,7 +896,7 @@ int rule_exprEq(){
   if(rule_exprRel()){
     if(rule_exprEq_2())
     return 1;
-    else tkerr(currentTk, "Incomplete EQ expression.");
+    else tkerr("Incomplete EQ expression.");
   }
 
   return 0;
@@ -915,7 +917,7 @@ int rule_exprRel_2(){
     if(rule_exprAdd()){
       rule_exprRel_2();
       return 1;
-    }else tkerr(currentTk, "Missing ADD expression.");
+    }else tkerr("Missing ADD expression.");
   }
   currentTk = startTk;
 
@@ -926,7 +928,7 @@ int rule_exprRel(){
   Token *startTk = currentTk;
 
   if(!rule_exprAdd()) return 0;
-  if(!rule_exprRel_2()) tkerr(currentTk, "Incomplete REL expression.");
+  if(!rule_exprRel_2()) tkerr("Incomplete REL expression.");
   currentTk = startTk;
 
   return 0;
@@ -959,7 +961,7 @@ int rule_exprAdd(){
   if(rule_exprMul()){
     if(rule_exprAdd_2())
     return 1;
-    else tkerr(currentTk, "Incomplete ADD expression.");
+    else tkerr("Incomplete ADD expression.");
   }
 
   return 0;
@@ -992,7 +994,7 @@ int rule_exprMul(){
   if(rule_exprCast()){
     if(rule_exprMul_2())
     return 1;
-    else tkerr(currentTk, "Incomplete MUL expression.");
+    else tkerr("Incomplete MUL expression.");
   }
 
   return 0;
@@ -1005,13 +1007,13 @@ int rule_exprCast(){
   if(consume(LPAR)){
     if(rule_typeName()){
       if(consume(RPAR)){
-        if(rule_exprCast)
+        if(rule_exprCast){
           return 1;
-        else tkerr("Incomplete CAST declaration.");
+        }else tkerr("Incomplete CAST declaration.");
       }else tkerr("Missing RPAR expression after cast declaration.");
     }else tkerr("Missing TYPENAME expression after LPAR declaration.");
   }
-  if(rule_exprUnary(){
+  if(rule_exprUnary()){
     return 1;
   }
   currentTk = startTk;
@@ -1026,13 +1028,13 @@ int rule_exprUnary(){
   if(consume(SUB)){
     if(rule_exprUnary())
       return 1;
-    else tkerr(currentTk,"Missing UNARY expression.");
+    else tkerr("Missing UNARY expression.");
   }
 
   if(consume(NOT)){
     if(rule_exprUnary())
       return 1;
-    else tkerr(currentTk,"Missing UNARY expression.");
+    else tkerr("Missing UNARY expression.");
   }
 
   if(rule_exprPostfix()){
@@ -1043,18 +1045,82 @@ int rule_exprUnary(){
   return 0;
 }
 
-int rule_exprPostfix(){
-  if(!rule_exprPostfix()) return 0;
-  if(rule_exprPostfix_2()){
-    //blabla//
+int rule_exprPostfix_2(){
+  Token *startTk = currentTk;
+  if(consume(LBRACKET)){
+    if(rule_expr()){
+      if(consume(RBRACKET)){
+        if(rule_exprPostfix_2()) return 1;
+        else tkerr(" Incomplete EXPRESSION declaration");
+      }else tkerr(" Missing RBACKET after expression");
+    }else tkerr(" Missing EXPRESSION after LBRACKET");
   }
+  if(consume(DOT)){
+    if(consume(ID)){
+      if(rule_exprPostfix_2()) return 1;
+      else tkerr(" Incomplete EXPRESSION declaration");
+    }else tkerr("Missing ID in postfix expression");
+  }
+  currentTk = startTk;
+  return 1;
 }
+
+int rule_exprPostfix(){
+  Token *startTk = currentTk;
+  if(rule_exprPrimary()){
+    if(rule_exprPostfix_2()){
+      return 1;
+    }else tkerr("Incomplete POSTFIX declaration");
+  }
+  currentTk = startTk;
+  return 0;
+}
+
+int rule_exprPrimary(){
+  Token *startTk = currentTk;
+  if(consume(ID)){
+    if(consume(LPAR)){
+      if(rule_expr()){
+        while(1){
+          if(consume(COMMA)){
+            if(rule_expr()) continue;
+            else tkerr("Missing expression after ','");
+          }
+          break;
+        }
+      }
+      if(consume(RPAR)){
+        return 1;
+      }else tkerr("Missing RPAR in primary EXPR");
+    }
+    return 1;
+  }
+  if(consume(CT_INT)) return 1;
+
+  if(consume(CT_REAL)) return 1;
+
+  if(consume(CT_CHAR)) return 1;
+
+  if(consume(CT_STRING)) return 1;
+
+  if(consume(LPAR)){
+    if(rule_expr()){
+      if(consume(RPAR))return 1;
+      else tkerr("Missing RPAR in primary EXPR");
+    }else tkerr("Missing expression after LPAR");
+  }
+
+  currentTk = startTk;
+  return 0;
+}
+
 
 void start_lexor(Token *startTk){
   currentTk = startTk;
   if(rule_unit()) printf("ASYN DONE");
-  else tkerr(currentTk, "Error at ASYN");
+  else tkerr("Error at ASYN");
 }
+
 // END OF PARSER
 void showTokens() {
     Token* p = tokens;
@@ -1092,9 +1158,10 @@ int main(int argc, char ** argv){
     //getNextToken(fp,c);
   }*/
   while(getNextToken(fp) != END);
-  printf("ALEX IS DONE");
-  //showTokens();
-
-
+  printf("\nALEX IS DONE\n");
+  showTokens();
+  printf("\n");
+  Token* p = tokens;
+  start_lexor(p);
   return 0;
 }
