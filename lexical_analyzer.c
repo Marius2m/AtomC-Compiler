@@ -827,15 +827,25 @@ int rule_expr() {
 //exprUnary ASSIGN exprAssign | exprOR
 int rule_exprAssign() {
 	Token *startTk = currentTk;
-
-	if (rule_exprUnary()) {
-		if (consume(ASSIGN)) {
-			if (rule_exprAssign())
-				return 1;
-			else tkerr("Missing exprAssign declaration.");
+	if ((currentTk->code == NOT) || (currentTk->code == SUB)) {
+		if (rule_exprUnary()) {
+			if (consume(ASSIGN)) {
+				if (rule_exprAssign())
+					return 1;
+				else tkerr("Missing exprAssign declaration.");
+			}
 		}
 	}
-	//currentTk = startTk;
+	if (rule_exprPostfix()) {
+		if (consume(ASSIGN)) {
+			if (rule_exprAssign()) {
+				return 1;
+			}
+			tkerr("Missing exprAssign");
+		}
+
+	}
+	currentTk = startTk;
 	if (rule_exprOr()) return 1;
 	currentTk = startTk;
 	return 0;
@@ -1136,7 +1146,7 @@ int rule_exprPrimary() {
 			if (consume(RPAR)) {
 				return 1;
 			}
-			else tkerr("Missing RPAR in primary EXPR");
+			else tkerr("Missing RPAR in primary EXPR after ID");
 		}
 		return 1;
 	}
@@ -1186,28 +1196,31 @@ int main(int argc, char ** argv) {
 		printf("Wrong nr. of params.");
 		exit(1);
 	}
-	printf("Compiling file: %s\n", argv[1]);
 
-	fp = fopen(argv[1], "r");
-	if (!fp) err("Cannot open the source file");
+		printf("Compiling file: %s\n", argv[1]);
 
-	int c;
-	tokens = (Token *)malloc(1000 * sizeof(Token));
-	/*
-	while((c = fgetc(fp)) != EOF){
-	if(c == EOF)
-	break;
-	ungetc(c,fp);
-	printf("%d ",getNextToken(fp));
-	//printf("HERE");
-	//voiam sa fac printToken(getNextToken(fp))
-	//getNextToken(fp,c);
-	}*/
-	while (getNextToken() != END);
-	printf("\nALEX IS DONE\n");
-	showTokens();
-	printf("\n");
-	Token* p = tokens;
-	start_lexor(p);
+		fp = fopen(argv[1], "r");
+		if (!fp) err("Cannot open the source file");
+
+		int c;
+		tokens = (Token *)malloc(1000 * sizeof(Token));
+		/*
+		while((c = fgetc(fp)) != EOF){
+		if(c == EOF)
+		break;
+		ungetc(c,fp);
+		printf("%d ",getNextToken(fp));
+		//printf("HERE");
+		//voiam sa fac printToken(getNextToken(fp))
+		//getNextToken(fp,c);
+		}*/
+
+		while (getNextToken() != END);
+		printf("\nALEX IS DONE \n");
+		//showTokens();
+		printf("\n");
+		Token* p = tokens;
+		start_lexor(p);
+		printf("\n\n");
 	return 0;
 }
