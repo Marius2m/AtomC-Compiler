@@ -1110,7 +1110,7 @@ int main(int argc, char ** argv){
     //voiam sa fac printToken(getNextToken(fp))
     //getNextToken(fp,c);
   }*/
-  while(getNextToken(fp) != END);
+  while(getNextToken() != END);
   printf("\nALEX IS DONE\n");
   showTokens();
   printf("\n");
