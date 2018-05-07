@@ -1,6 +1,6 @@
 # AtomC-Compiler
 
-A compiler for AtomC language written in C for Compilation Techniques.
+A compiler for AtomC language written in C.
 
 ## Getting started
 
