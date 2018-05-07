@@ -12,15 +12,15 @@
 FILE *fp;
 
 enum token_codes {
-	//0   1      2     3       4     5    6   7    8       9       10    11
+//0   1      2     3       4     5    6   7    8       9       10    11
 	ID, BREAK, CHAR, DOUBLE, ELSE, FOR, IF, INT, RETURN, STRUCT, VOID, WHILE,
-	//12      13       14       15
+//12      13       14       15
 	CT_INT, CT_REAL, CT_CHAR, CT_STRING,
-	//16     17         18    19    20        21        22    23
+//16     17         18    19    20        21        22    23
 	COMMA, SEMICOLON, LPAR, RPAR, LBRACKET, RBRACKET, LACC, RACC,
-	//24   25  26    27   28   29   30   31     32    33      34    35    36        37      38
+//24   25   26   27   28   29   30  31   32      33     34     35    36      37       38
 	ADD, SUB, MUL, DIV, DOT, AND, OR, NOT, ASSIGN, EQUAL, NOTEQ, LESS, LESSEQ, GREATER, GREATEREQ,
-	//39 - EOF
+//39 - EOF
 	END
 };
 
@@ -366,7 +366,7 @@ int getNextToken()
 			}
 			else { //no other case than 0 -> 7 => END
 				token_name[currentIndex] = '\0';
-				//ungetc(ch, fp);
+				ungetc(ch, fp);
 				addTk2(CT_INT, token_name);
 				return CT_INT;
 			}
@@ -504,7 +504,7 @@ int getNextToken()
 				return DIV;
 			}
 			break;
-		}//aici?
+		}
 
 		ch = fgetc(fp);
 		if (ch == EOF) flag++;
@@ -515,15 +515,7 @@ int getNextToken()
 	}
 }
 
-/*
-void printTokens(int code){
-switch(code){
-case 0:{printf(" ID "); break;}
-case 1:{printf (" BREAK "); break;}
-case 2:{printf (" CHAR "); break;}
-case 3:{printf (" DOUBLE "); break;}
-}
-}*/
+
 
 // PARSER
 Token *consumedTk;
@@ -535,12 +527,12 @@ int rule_declVar();     //DONE
 int rule_typeBase();    //DONE
 int rule_arrayDecl();   //DONE
 int rule_typeName();    //DONE
-int rule_declFunc();    //DONE but not sure if ok
+int rule_declFunc();    //DONE
 int rule_funcArg();     //DONE
-int rule_stm();         //DONE but needs re-check
+int rule_stm();         //DONE
 int rule_stmCompound(); //DONE
 int rule_expr();        //DONE
-int rule_exprAssign();  //DONE but needs re-check
+int rule_exprAssign();  //DONE
 int rule_exprOr();      //DONE
 int rule_exprOr_2();    //DONE
 int rule_exprAnd();     //DONE
@@ -555,9 +547,9 @@ int rule_exprMul();     //DONE
 int rule_exprMul_2();   //DONE
 int rule_exprCast();    //DONE
 int rule_exprUnary();   //DONE
-int rule_exprPostfix(); //DONE but needs check
-int rule_exprPostfix_2(); //DONE but needs check
-int rule_exprPrimary(); //DONE but needs check
+int rule_exprPostfix(); //DONE
+int rule_exprPostfix_2(); //DONE
+int rule_exprPrimary(); //DONE
 
 int consume(int code) {
 	if (currentTk->code == code) {
@@ -594,7 +586,7 @@ int rule_declStruct() {
 	return 1;
 }
 
-int rule_declVar() { //need to re-look here
+int rule_declVar() {
 	Token *startTk = currentTk;
 
 	if (rule_typeBase()) {
@@ -746,9 +738,9 @@ int rule_stm() {
 		}
 		else tkerr("Missing LPAR declaration.");
 	}
-	currentTk = startTk; //not sure if needed
+	currentTk = startTk;
 
-						 //WHILE LPAR expr RPAR stm
+  //WHILE LPAR expr RPAR stm
 	if (consume(WHILE)) {
 		if (consume(LPAR)) {
 			if (rule_expr()) {
@@ -804,7 +796,7 @@ int rule_stm() {
 	}
 	else { //CHANGED HERE
 		if (rule_expr()) {
-			if (!consume(SEMICOLON)) tkerr("Missing SEMICOLON declaration");
+			if (!consume(SEMICOLON)) tkerr("Missing SEMICOLON declaration.");
 			return 1;
 		}
 	}
@@ -857,7 +849,7 @@ int rule_exprAssign() {
 			if (rule_exprAssign()) {
 				return 1;
 			}
-			tkerr("Missing exprAssign");
+			tkerr("Missing exprAssign.");
 		}
 
 	}
@@ -875,9 +867,9 @@ int rule_exprOr_2() {
 			if (rule_exprOr_2()) {
 				return 1;
 			}
-			else tkerr("Incomplete OR expression");
+			else tkerr("Incomplete OR expression.");
 		}
-		else tkerr("Missing AND expression after OR declaration");
+		else tkerr("Missing AND expression after OR declaration.");
 	}
 
 	currentTk = startTk;
@@ -905,7 +897,7 @@ int rule_exprAnd_2() {
 			if (rule_exprAnd_2()) {
 				return 1;
 			}
-			else tkerr("Missing rule_exprAnd_2 ");
+			else tkerr("Missing rule_exprAnd_2.");
 		}
 		else tkerr("Missing expression after AND.");
 	}
@@ -999,7 +991,7 @@ int rule_exprAdd_2() {
 	if (consume(ADD)) {
 		if (rule_exprAdd()) {
 			if (rule_exprAdd_2()) return 1;
-			else tkerr("Missing expr after ADD");
+			else tkerr("Missing expr after ADD.");
 		}
 		else tkerr("Missing REL expression.");
 	}
@@ -1007,7 +999,7 @@ int rule_exprAdd_2() {
 	if (consume(SUB)) {
 		if (rule_exprAdd()) {
 			if (rule_exprAdd_2()) return 1;
-			else tkerr("Missing expr after SUB");
+			else tkerr("Missing expr after SUB.");
 		}
 		else tkerr("Missing REL expression.");
 	}
@@ -1034,7 +1026,7 @@ int rule_exprMul_2() {
 	if (consume(MUL)) {
 		if (rule_exprCast()) {
 			if (rule_exprMul_2()) return 1;
-			else tkerr("Missing mul after cast");
+			else tkerr("Missing mul after cast.");
 		}
 		else tkerr("Missing REL expression.");
 	}
@@ -1042,7 +1034,7 @@ int rule_exprMul_2() {
 	if (consume(DIV)) {
 		if (rule_exprCast()) {
 			if (rule_exprMul_2()) return 1;
-			else tkerr("Missing mul after cast");
+			else tkerr("Missing mul after cast.");
 		}
 		else tkerr("Missing REL expression.");
 	}
@@ -1117,18 +1109,18 @@ int rule_exprPostfix_2() {
 		if (rule_expr()) {
 			if (consume(RBRACKET)) {
 				if (rule_exprPostfix_2()) return 1;
-				else tkerr(" Incomplete EXPRESSION declaration");
+				else tkerr("Incomplete EXPRESSION declaration.");
 			}
-			else tkerr(" Missing RBACKET after expression");
+			else tkerr("Missing RBACKET after expression.");
 		}
-		else tkerr(" Missing EXPRESSION after LBRACKET");
+		else tkerr("Missing EXPRESSION after LBRACKET.");
 	}
 	if (consume(DOT)) {
 		if (consume(ID)) {
 			if (rule_exprPostfix_2()) return 1;
-			else tkerr(" Incomplete EXPRESSION declaration");
+			else tkerr(" Incomplete EXPRESSION declaration.");
 		}
-		else tkerr("Missing ID in postfix expression");
+		else tkerr("Missing ID in postfix expression.");
 	}
 	currentTk = startTk;
 	return 1;
@@ -1140,7 +1132,7 @@ int rule_exprPostfix() {
 		if (rule_exprPostfix_2()) {
 			return 1;
 		}
-		else tkerr("Incomplete POSTFIX declaration");
+		else tkerr("Incomplete POSTFIX declaration.");
 	}
 	currentTk = startTk;
 	return 0;
@@ -1154,7 +1146,7 @@ int rule_exprPrimary() {
 				while (1) {
 					if (consume(COMMA)) {
 						if (rule_expr()) continue;
-						else tkerr("Missing expression after ','");
+						else tkerr("Missing expression after ','.");
 					}
 					break;
 				}
@@ -1162,7 +1154,7 @@ int rule_exprPrimary() {
 			if (consume(RPAR)) {
 				return 1;
 			}
-			else tkerr("Missing RPAR in primary EXPR after ID");
+			else tkerr("Missing RPAR in primary EXPR after ID.");
 		}
 		return 1;
 	}
@@ -1177,9 +1169,9 @@ int rule_exprPrimary() {
 	if (consume(LPAR)) {
 		if (rule_expr()) {
 			if (consume(RPAR))return 1;
-			else tkerr("Missing RPAR in primary EXPR");
+			else tkerr("Missing RPAR in primary EXPR.");
 		}
-		else tkerr("Missing expression after LPAR");
+		else tkerr("Missing expression after LPAR.");
 	}
 
 	currentTk = startTk;
@@ -1189,7 +1181,7 @@ int rule_exprPrimary() {
 
 void start_lexor(Token *startTk) {
 	currentTk = startTk;
-	if (rule_unit()) printf("ASYN DONE");
+	if (rule_unit()) printf("Sucessfully completed the syntactical analysis stage.\n");
 	else tkerr("Error at ASYN");
 }
 
@@ -1213,31 +1205,18 @@ int main(int argc, char ** argv) {
 		exit(1);
 	}
 
-	printf("Compiling file: %s\n", argv[1]);
-
+	printf("Compiling file: %s\n\n", argv[1]);
 	fp = fopen(argv[1], "r");
-	if (!fp) err("Cannot open the source file");
+	if (!fp) err("Cannot open the source file. (%s)", argv[1]);
 
 	int c;
 	tokens = (Token *)malloc(1000 * sizeof(Token));
-	/*
-	while((c = fgetc(fp)) != EOF){
-	if(c == EOF)
-	break;
-	ungetc(c,fp);
-	printf("%d ",getNextToken(fp));
-	//printf("HERE");
-	//voiam sa fac printToken(getNextToken(fp))
-	//getNextToken(fp,c);
-	}*/
-
-
 	while (getNextToken() != END);
-	printf("\nALEX IS DONE \n");
-	//showTokens();
+	printf("\n\nSucessfully completed the lexical analysis stage.");
 	printf("\n");
+
 	Token* p = tokens;
 	start_lexor(p);
-	printf("\n\n");
+
 	return 0;
 }
