@@ -1,4 +1,6 @@
-#include "stdafx.h"
+// ConsoleApplication2.cpp : Defines the entry point for the console application.
+
+//#include "stdafx.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -117,10 +119,12 @@ void showTokens();
 int getNextToken()
 {
 	int state = 0;
+
 	char ch = fgetc(fp);
 	char *token_name = (char *)malloc(256);
 	int currentIndex = 0; //dimension of our "rule"
 	int flag = 0;
+
 	if (ch == EOF) {
 		showTokens();
 		exit(1);
@@ -173,14 +177,7 @@ int getNextToken()
 				return MUL;
 			}
 			else if (ch == '/') {
-				ch = fgetc(fp);
-				if (ch != '*' && ch != '/') {
-					ungetc(ch, fp);
-					addTk(DIV);
-					return DIV;
-				}
-				else if (ch == '*') state = 2;
-				else if (ch == '/') state = 3;
+				state = 12;
 			}
 			else if (ch == '.') {
 				addTk(DOT);
@@ -277,17 +274,16 @@ int getNextToken()
 				currentIndex++;
 
 				if (ch != '0')
-					state = 5;
+					state = 5; //3
 				else if (ch == '0') {
 					ch = fgetc(fp);
 					strcpy(token_name + currentIndex, &ch);
 					currentIndex++;
 
 					if (ch >= '0' && ch <= '7')
-						state = 6; // OCTAL NR ?
-					else if (ch == 'x' || ch == 'X')
-						state = 7; // HEX NR ?
-								   //maybe delete this == '.'
+						state = 6; // OCTAL NR ? //5
+					else if (ch == 'x')
+						state = 7; // HEX NR ? //4
 					else if (ch == '.') {
 						strcpy(token_name + currentIndex, &ch);
 						currentIndex++;
@@ -327,17 +323,17 @@ int getNextToken()
 			if (ch != '*') state = 2; //we still have to consume
 			else state = 4; //we are almost done
 			break;
-		case 4: //4
-			if (ch != '*' && ch != '/') state = 2; //we are not done consuming comments
-			else if (ch == '*') state = 4;
-			else if (ch == '/') state = 0; // done
-			break;
 		case 3:
 			if (ch != '\n' && ch != '\r' && ch != '\0' && ch != EOF) state = 3;
 			else {
 				ungetc(ch, fp);
 				state = 0;
 			}
+			break;
+		case 4:
+			if (ch != '*' && ch != '/') state = 2;  //we are not done consuming comments
+			else if (ch == '*') state = 4;
+			else if (ch == '/') state = 0; // done
 			break;
 		case 5: // DECIMAL + REAL CASES
 			if (isdigit(ch)) {
@@ -350,10 +346,17 @@ int getNextToken()
 				state = 8; // REAL CASE
 			}
 			else {
-				token_name[currentIndex] = '\0'; //formed a CT_INT
-				ungetc(ch, fp);
-				addTk2(CT_INT, token_name);
-				return CT_INT;
+				if (ch == 'e' || ch == 'E') {
+					strcpy(token_name + currentIndex, &ch);
+					currentIndex++;
+					state = 8; // REAL CASE
+				}
+				else {
+					ungetc(ch, fp);
+					token_name[currentIndex] = '\0'; //formed a CT_INT
+					addTk2(CT_INT, token_name);
+					return CT_INT;
+				}
 			}
 			break;
 		case 6: // OCTAL
@@ -363,7 +366,7 @@ int getNextToken()
 			}
 			else { //no other case than 0 -> 7 => END
 				token_name[currentIndex] = '\0';
-				ungetc(ch, fp);
+				//ungetc(ch, fp);
 				addTk2(CT_INT, token_name);
 				return CT_INT;
 			}
@@ -375,7 +378,7 @@ int getNextToken()
 			}
 			else {
 				token_name[currentIndex] = '\0';
-				ungetc(ch, fp);
+				//ungetc(ch, fp);
 				addTk2(CT_INT, token_name);
 				return CT_INT;
 			}
@@ -486,6 +489,19 @@ int getNextToken()
 					strcpy(token_name + currentIndex, &ch);
 					currentIndex++;
 				}
+			}
+			break;
+		case 12:
+			if(ch == '*'){
+				state = 2;
+			}
+			else if(ch == '/'){
+				state = 3;
+			}
+			else{// (ch != '*' && ch != '/') {
+				ungetc(ch, fp);
+				addTk(DIV);
+				return DIV;
 			}
 			break;
 		}//aici?
@@ -915,7 +931,7 @@ int rule_exprEq_2() {
 
 	if (consume(EQUAL)) {
 		if (rule_exprRel()) {
-			if(rule_exprEq_2()) return 1;
+			if (rule_exprEq_2()) return 1;
 			else tkerr("Missing EXPR expr");
 		}
 		else tkerr("Missing REL expression.");
@@ -959,7 +975,7 @@ int rule_exprRel_2() {
 
 	if (rule_exprRel_3()) {
 		if (rule_exprAdd()) {
-			if(rule_exprRel_2()) return 1;
+			if (rule_exprRel_2()) return 1;
 			else tkerr("Missing exprRel");
 		}
 		else tkerr("Missing ADD expression.");
@@ -982,7 +998,7 @@ int rule_exprAdd_2() {
 
 	if (consume(ADD)) {
 		if (rule_exprAdd()) {
-			if(rule_exprAdd_2()) return 1;
+			if (rule_exprAdd_2()) return 1;
 			else tkerr("Missing expr after ADD");
 		}
 		else tkerr("Missing REL expression.");
@@ -1017,7 +1033,7 @@ int rule_exprMul_2() {
 
 	if (consume(MUL)) {
 		if (rule_exprCast()) {
-			if(rule_exprMul_2()) return 1;
+			if (rule_exprMul_2()) return 1;
 			else tkerr("Missing mul after cast");
 		}
 		else tkerr("Missing REL expression.");
@@ -1086,7 +1102,7 @@ int rule_exprUnary() {
 			return 1;
 		else tkerr("Missing UNARY expression.");
 	}
-	currentTk=startTk;
+	currentTk = startTk;
 	if (rule_exprPostfix()) {
 		return 1;
 	}
@@ -1197,30 +1213,31 @@ int main(int argc, char ** argv) {
 		exit(1);
 	}
 
-		printf("Compiling file: %s\n", argv[1]);
+	printf("Compiling file: %s\n", argv[1]);
 
-		fp = fopen(argv[1], "r");
-		if (!fp) err("Cannot open the source file");
+	fp = fopen(argv[1], "r");
+	if (!fp) err("Cannot open the source file");
 
-		int c;
-		tokens = (Token *)malloc(1000 * sizeof(Token));
-		/*
-		while((c = fgetc(fp)) != EOF){
-		if(c == EOF)
-		break;
-		ungetc(c,fp);
-		printf("%d ",getNextToken(fp));
-		//printf("HERE");
-		//voiam sa fac printToken(getNextToken(fp))
-		//getNextToken(fp,c);
-		}*/
+	int c;
+	tokens = (Token *)malloc(1000 * sizeof(Token));
+	/*
+	while((c = fgetc(fp)) != EOF){
+	if(c == EOF)
+	break;
+	ungetc(c,fp);
+	printf("%d ",getNextToken(fp));
+	//printf("HERE");
+	//voiam sa fac printToken(getNextToken(fp))
+	//getNextToken(fp,c);
+	}*/
 
-		while (getNextToken() != END);
-		printf("\nALEX IS DONE \n");
-		//showTokens();
-		printf("\n");
-		Token* p = tokens;
-		start_lexor(p);
-		printf("\n\n");
+
+	while (getNextToken() != END);
+	printf("\nALEX IS DONE \n");
+	//showTokens();
+	printf("\n");
+	Token* p = tokens;
+	start_lexor(p);
+	printf("\n\n");
 	return 0;
 }
