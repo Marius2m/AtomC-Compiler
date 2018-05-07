@@ -10,13 +10,13 @@ Follow the next instructions to be able to run this project.
 
 ### Installing
 
-Download and install: 
+Download and install using Code::Blocks and GCC:
 ```
-Code::Blocks alongside GCC from http://www.codeblocks.org/downloads/26
+http://www.codeblocks.org/downloads/26
 ```
-or
+or using Visual Studio:
 ```
-Visual Studio from https://www.visualstudio.com/downloads/
+https://www.visualstudio.com/downloads/
 ```
 
 ### Running
@@ -36,8 +36,8 @@ main.exe <testfile_name>.c
 ```
 
 ## Materials
-*[Compilation Techniques Laboratory](https://sites.google.com/site/razvanaciu/compilation-techniques)
-*[Test programs](https://sites.google.com/site/razvanaciu/AtomC-tests.zip?attredirects=0)
+* [Compilation Techniques Laboratory](https://sites.google.com/site/razvanaciu/compilation-techniques)
+* [Test programs](https://sites.google.com/site/razvanaciu/AtomC-tests.zip?attredirects=0)
 
 ## Authors
 * **Alexandra Bocereg** - [GitHub](https://github.com/alexandra-b)
