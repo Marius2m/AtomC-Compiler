@@ -2,7 +2,7 @@
 
 A compiler for AtomC language written in C for Compilation Techniques.
 
-##Getting started
+## Getting started
 
 ### Prerequisites
 
@@ -21,7 +21,7 @@ https://www.visualstudio.com/downloads/
 
 ### Running
 Using Developer Command Prompt for VS:
-1. Open Developer command prompt 
+1. Open Developer command prompt (Win + S keys)
 2. Navigate to the repository
 ``` 
 cd AtomC-Compiler
