@@ -12,15 +12,15 @@
 FILE *fp;
 
 enum token_codes {
-//0   1      2     3       4     5    6   7    8       9       10    11
+	//0   1      2     3       4     5    6   7    8       9       10    11
 	ID, BREAK, CHAR, DOUBLE, ELSE, FOR, IF, INT, RETURN, STRUCT, VOID, WHILE,
-//12      13       14       15
+	//12      13       14       15
 	CT_INT, CT_REAL, CT_CHAR, CT_STRING,
-//16     17         18    19    20        21        22    23
+	//16     17         18    19    20        21        22    23
 	COMMA, SEMICOLON, LPAR, RPAR, LBRACKET, RBRACKET, LACC, RACC,
-//24   25   26   27   28   29   30  31   32      33     34     35    36      37       38
+	//24   25   26   27   28   29   30  31   32      33     34     35    36      37       38
 	ADD, SUB, MUL, DIV, DOT, AND, OR, NOT, ASSIGN, EQUAL, NOTEQ, LESS, LESSEQ, GREATER, GREATEREQ,
-//39 - EOF
+	//39 - EOF
 	END
 };
 
@@ -395,8 +395,10 @@ int getNextToken()
 				ch = fgetc(fp);
 				if (ch == '-' || ch == '+') {
 					int ch2 = fgetc(fp);
+					printf("First is %c\n",ch2);
 					while (isdigit(ch2)) {
-						strcpy(token_name + currentIndex, &ch);
+						printf("\nFound %c after %c\n",ch2,ch);
+						strcpy(token_name + currentIndex, &ch2);
 						currentIndex++;
 						ch2 = fgetc(fp);
 					}
@@ -492,13 +494,13 @@ int getNextToken()
 			}
 			break;
 		case 12:
-			if(ch == '*'){
+			if (ch == '*') {
 				state = 2;
 			}
-			else if(ch == '/'){
+			else if (ch == '/') {
 				state = 3;
 			}
-			else{// (ch != '*' && ch != '/') {
+			else {// (ch != '*' && ch != '/') {
 				ungetc(ch, fp);
 				addTk(DIV);
 				return DIV;
@@ -740,7 +742,7 @@ int rule_stm() {
 	}
 	currentTk = startTk;
 
-  //WHILE LPAR expr RPAR stm
+	//WHILE LPAR expr RPAR stm
 	if (consume(WHILE)) {
 		if (consume(LPAR)) {
 			if (rule_expr()) {
