@@ -1,6 +1,6 @@
 // ConsoleApplication2.cpp : Defines the entry point for the console application.
 
-//#include "stdafx.h"
+#include "stdafx.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -78,8 +78,14 @@ Token *addTk2(int code, char *value)
 		printf("%s ", tk->text);
 	}
 	if (code == CT_INT) {
-		tk->integer = atoi(value);//(char*)malloc(strlen(value) * sizeof(char));
-								  //strcpy(tk->integer, atoi(value));
+		if (strchr(value, 'x')) {
+			//printf("\nVALUE IS %s\n", value);
+			tk->integer = strtol(value,NULL,16);
+			//printf("TK INTEGER IS %ld\n", tk->integer);
+		}
+		else {
+			tk->integer = atoi(value);//(char*)malloc(strlen(value) * sizeof(char));
+		}					  //strcpy(tk->integer, atoi(value));
 		printf("%d ", tk->integer);
 	}
 	if (code == CT_REAL) {
@@ -88,6 +94,7 @@ Token *addTk2(int code, char *value)
 		printf("%f ", tk->real);
 	}
 	if (code == CT_CHAR) {
+		//printf("VALUE OF CHAR IS %s\n", value);
 		tk->character = value[0];//(char*)malloc(strlen(value) * sizeof(char));
 								 //strcpy(tk->character, value);
 		printf("%c ", tk->character);
@@ -277,17 +284,22 @@ int getNextToken()
 					state = 5; //3
 				else if (ch == '0') {
 					ch = fgetc(fp);
-					strcpy(token_name + currentIndex, &ch);
-					currentIndex++;
 
-					if (ch >= '0' && ch <= '7')
+					if (ch >= '0' && ch <= '7') {
+						strcpy(token_name + currentIndex, &ch);
+						currentIndex++;
 						state = 6; // OCTAL NR ? //5
-					else if (ch == 'x')
+					}
+					else if (ch == 'x') {
+						strcpy(token_name + currentIndex, &ch);
+						currentIndex++;
 						state = 7; // HEX NR ? //4
+					}
 					else if (ch == '.') {
 						strcpy(token_name + currentIndex, &ch);
 						currentIndex++;
-						state = 8; // REAL CASE
+						//ungetc(ch, fp);
+						state = 8;
 					}
 					else { // end of number
 						if (!isdigit(ch)) { //no longer CT_INT
@@ -347,8 +359,9 @@ int getNextToken()
 			}
 			else {
 				if (ch == 'e' || ch == 'E') {
-					strcpy(token_name + currentIndex, &ch);
-					currentIndex++;
+					//strcpy(token_name + currentIndex, &ch);
+					//currentIndex++;
+					ungetc(ch, fp);
 					state = 8; // REAL CASE
 				}
 				else {
@@ -378,7 +391,7 @@ int getNextToken()
 			}
 			else {
 				token_name[currentIndex] = '\0';
-				//ungetc(ch, fp);
+				ungetc(ch, fp);
 				addTk2(CT_INT, token_name);
 				return CT_INT;
 			}
@@ -394,10 +407,12 @@ int getNextToken()
 
 				ch = fgetc(fp);
 				if (ch == '-' || ch == '+') {
-					int ch2 = fgetc(fp);
-					printf("First is %c\n",ch2);
+					strcpy(token_name + currentIndex, &ch);
+					currentIndex++;
+					char ch2 = fgetc(fp);
+					printf("First is %c\n", ch2);
 					while (isdigit(ch2)) {
-						printf("\nFound %c after %c\n",ch2,ch);
+						printf("\nFound %c after %c\n", ch2, ch);
 						strcpy(token_name + currentIndex, &ch2);
 						currentIndex++;
 						ch2 = fgetc(fp);
@@ -428,7 +443,8 @@ int getNextToken()
 					ch = fgetc(fp);
 
 					if (ch == '\'') {
-						addTk2(CT_CHAR, &ch);
+						token_name[currentIndex] = '\0';
+						addTk2(CT_CHAR, token_name);
 						return CT_CHAR;
 					}
 					else tkerr("Invalid character before \'");
@@ -1211,7 +1227,7 @@ int main(int argc, char ** argv) {
 	fp = fopen(argv[1], "r");
 	if (!fp) err("Cannot open the source file. (%s)", argv[1]);
 
-	int c;
+//	int c;
 	tokens = (Token *)malloc(1000 * sizeof(Token));
 	while (getNextToken() != END);
 	printf("\n\nSucessfully completed the lexical analysis stage.");
