@@ -6,10 +6,167 @@
 #include<string.h>
 #include<ctype.h>
 #include <stdarg.h>
+#include<errno.h>
+#include "Compiler.h"
 
 #pragma warning(disable: 4996)
 #define SAFEALLOC(var,Type)  if((var=(Type*)malloc(sizeof(Type)))==NULL)err("not enough memory");
+
+void tkerr(const char *fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+	//fprintf(stderr, "error in line %d: ",tk->line); //optional
+	vfprintf(stderr, fmt, va);
+	fputc('\n', stderr);
+	va_end(va);
+	exit(-1);
+}
+
+void err(const char *fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+	fprintf(stderr, "error: ");
+	vfprintf(stderr, fmt, va);
+	fputc('\n', stderr);
+	va_end(va);
+	exit(-1);
+}
+typedef struct _Token {
+	int code;       // code (name)
+	union {
+		char *text;  // used for ID, CT_STRING (dynamically allocated)
+		long int integer;  // used for CT_INT
+		char character; //used for CT_CHAR
+		double real;    // used for CT_REAL
+	};
+	//int line; //optional
+	struct _Token *next; // link to the next token
+}Token;
+Token *tokens;
+Token *lastToken;
+Token *currentTk;
 FILE *fp;
+Token *consumedTk;
+
+int crtDepth = 0;
+
+//SYMBOLS
+
+enum { TB_INT, TB_DOUBLE, TB_CHAR, TB_STRUCT, TB_VOID };
+
+enum { CLS_VAR, CLS_FUNC, CLS_EXTFUNC, CLS_STRUCT };
+
+enum { MEM_GLOBAL, MEM_ARG, MEM_LOCAL };
+
+typedef struct _Symbol Symbol;
+typedef struct {
+	Symbol **begin; //the beginning of the symbols (or NULL)
+	Symbol **end; //the position after the last symbol
+	Symbol **after; //the position after the allocated space
+}Symbols;
+Symbols symbols;
+
+typedef struct {
+	int typeBase; //TB_*
+	Symbol *s; //struct definition for TB_STRUCT
+	int nElements; //>0 array of given size, 0=array without size, <0 non array
+}Type;
+
+void addVar(Token *tkName, Type *t);
+
+typedef struct _Symbol {
+	const char *name; //reference to the name stored in a token
+	int cls; //CLS_*
+	int mem; //MEM*_
+	Type type;
+	int depth;
+	union {
+		Symbols args; //used only for functions
+		Symbols members; //used only for structs
+	};
+}Symbol;
+
+Symbol *crtStruct;
+Symbol *crtFunc;
+
+
+
+void initSymbols(Symbols *symbols) {
+	symbols->begin = NULL;
+	symbols->end = NULL;
+	symbols->after = NULL;
+}
+
+Symbol *addSymbol(Symbols *symbols, const char *name, int cls) {
+	Symbol *s;
+	if (symbols->end == symbols->after) { //create more room
+		int count = symbols->after - symbols->begin;
+		int n = count * 2; //double the room
+		if (n == 0) n = 1; //needed for the initial case
+		symbols->begin = (Symbol **)realloc(symbols->begin, n * sizeof(Symbol *));
+		if (symbols->begin == NULL) err("not enough memory");
+		symbols->end = symbols->begin + count;
+		symbols->after = symbols->begin + n;
+	}
+	SAFEALLOC(s, Symbol);
+	*symbols->end++ = s;
+	printf("ADDED SYMBOL %s WITH CLASS %d and DEPTH %d\n", name, cls,crtDepth);
+	s->name = name;
+	s->cls = cls;
+	s->depth = crtDepth;
+	return s;
+}
+
+Symbol *findSymbol(Symbols *symbols, const char *name) {
+	int size = (symbols->end) - (symbols->begin);
+	size--;
+	while (size >= 0) {
+		if (strcmp(symbols->begin[size]->name, name) == 0) {
+			return symbols->begin[size];
+		}
+		size--;
+	}
+	return NULL;
+}
+
+void addVar(Token *tkName, Type *t){
+	Symbol *s;
+	if (crtStruct) {
+		if (findSymbol(&crtStruct->members, tkName->text))
+			tkerr("symbol redefinition: %s", tkName->text);
+		s = addSymbol(&crtStruct->members, tkName->text, CLS_VAR);
+	}
+	else if (crtFunc) {
+		s = findSymbol(&symbols, tkName->text);
+		if (s&&s->depth == crtDepth)
+			tkerr("symbol redefinition: %s", tkName->text);
+		s = addSymbol(&symbols, tkName->text, CLS_VAR);
+		s->mem = MEM_LOCAL;
+	}
+	else {
+		if (findSymbol(&symbols, tkName->text))
+			tkerr("symbol redefinition: %s", tkName->text);
+		//printf("ADDED VARIABLE %s in addVar \n", tkName->text);
+		s = addSymbol(&symbols, tkName->text, CLS_VAR);
+		s->mem = MEM_GLOBAL;
+	}
+	s->type = *t;
+}
+
+void deleteSymbolsAfter(Symbols *symbols, Symbol *symbol) {
+	int cnt = 0, i;
+	int size = symbols->end - symbols->begin;
+	int found = size;
+	for (cnt = 0; cnt < size; cnt++) {
+		if ((symbols->begin[cnt]) == symbol) {
+			found = cnt;
+			for (cnt++; cnt < size; cnt++) {
+				free(symbols->begin[cnt]);
+			}
+			symbols->end = symbols->begin + found + 1;
+		}
+	}
+}
 
 enum token_codes {
 	//0   1      2     3       4     5    6   7    8       9       10    11
@@ -24,29 +181,6 @@ enum token_codes {
 	END
 };
 
-void err(const char *fmt, ...) {
-	va_list va;
-	va_start(va, fmt);
-	fprintf(stderr, "error: ");
-	vfprintf(stderr, fmt, va);
-	fputc('\n', stderr);
-	va_end(va);
-	exit(-1);
-}
-
-typedef struct _Token {
-	int code;       // code (name)
-	union {
-		char *text;  // used for ID, CT_STRING (dynamically allocated)
-		long int integer;  // used for CT_INT
-		char character; //used for CT_CHAR
-		double real;    // used for CT_REAL
-	};
-	//int line; //optional
-	struct _Token *next; // link to the next token
-}Token;
-Token *tokens;
-Token *lastToken;
 
 
 Token *addTk(int code)
@@ -80,7 +214,7 @@ Token *addTk2(int code, char *value)
 	if (code == CT_INT) {
 		if (strchr(value, 'x')) {
 			//printf("\nVALUE IS %s\n", value);
-			tk->integer = strtol(value,NULL,16);
+			tk->integer = strtol(value, NULL, 16);
 			//printf("TK INTEGER IS %ld\n", tk->integer);
 		}
 		else {
@@ -109,16 +243,6 @@ Token *addTk2(int code, char *value)
 	}
 	lastToken = tk;
 	return tk;
-}
-
-void tkerr(const char *fmt, ...) {
-	va_list va;
-	va_start(va, fmt);
-	//fprintf(stderr, "error in line %d: ",tk->line); //optional
-	vfprintf(stderr, fmt, va);
-	fputc('\n', stderr);
-	va_end(va);
-	exit(-1);
 }
 
 void showTokens();
@@ -406,7 +530,7 @@ int getNextToken()
 				currentIndex++;
 
 				ch = fgetc(fp);
-				if (ch == '-' || ch == '+') {
+				if ((ch == '-' || ch == '+') || isdigit(ch)) {
 					strcpy(token_name + currentIndex, &ch);
 					currentIndex++;
 					char ch2 = fgetc(fp);
@@ -536,15 +660,13 @@ int getNextToken()
 
 
 // PARSER
-Token *consumedTk;
-Token *currentTk = NULL;
 
 int rule_unit();        //DONE
 int rule_declStruct();  //DONE
 int rule_declVar();     //DONE
-int rule_typeBase();    //DONE
-int rule_arrayDecl();   //DONE
-int rule_typeName();    //DONE
+int rule_typeBase(Type *ret);    //DONE
+int rule_arrayDecl(Type *ret);   //DONE
+int rule_typeName(Type *ret);    //DONE
 int rule_declFunc();    //DONE
 int rule_funcArg();     //DONE
 int rule_stm();         //DONE
@@ -592,28 +714,45 @@ int rule_unit() {
 int rule_declStruct() {
 	Token *startTk = currentTk;
 	if (!consume(STRUCT)) return 0;
+	Token tkName = *currentTk;
 	if (!consume(ID)) tkerr("Missing ID after STRUCT declaration.");
 	if (!consume(LACC)) { currentTk = startTk; return 0; } //tkerr...
+	//symbols part
+	if (findSymbol(&symbols, tkName.text))
+		tkerr("symbol redefinition: %s", tkName.text);
+	crtStruct = addSymbol(&symbols, tkName.text, CLS_STRUCT);
+	initSymbols(&crtStruct->members);
+	//end of symbols part
 	while (1) {
 		if (rule_declVar()) {}
 		else break;
 	}
 	if (!consume(RACC)) tkerr("Missing RACC after STRUCT declaration.");
 	if (!consume(SEMICOLON)) tkerr("Missing SEMICOLON after STRUCT declaration.");
-
+	crtStruct = NULL;
 	return 1;
 }
 
 int rule_declVar() {
 	Token *startTk = currentTk;
-
-	if (rule_typeBase()) {
+	Type t;
+	Symbol *s;
+	Token tkName;
+	if (rule_typeBase(&t)) {
+		Token tkName = *currentTk;
 		if (consume(ID)) {
-			rule_arrayDecl();
+			if (!rule_arrayDecl(&t)) {
+				t.nElements = -1;
+			}
+			addVar(&tkName, &t);
 			while (1) {
 				if (consume(COMMA)) {
+					tkName = *currentTk;
 					if (consume(ID)) {
-						rule_arrayDecl();
+						if (!rule_arrayDecl(&t)) {
+							t.nElements = -1;
+						}
+						addVar(&tkName, &t);
 					}
 					else tkerr("Missing ID after COMMA in VAR declaration.");
 				}
@@ -629,27 +768,36 @@ int rule_declVar() {
 	return 0;
 }
 
-int rule_typeBase() {
+int rule_typeBase(Type *ret) {
 	Token *startTk = currentTk;
-
-	if (consume(INT)) return 1;
-	if (consume(DOUBLE)) return 1;
-	if (consume(CHAR)) return 1;
-	if (consume(STRUCT)) {
+	if (consume(INT)) {
+		ret->typeBase = TB_INT;
+	}else if (consume(DOUBLE)) {
+		ret->typeBase = TB_DOUBLE;
+	}else if (consume(CHAR)) {
+		ret->typeBase = TB_CHAR;
+	}else if (consume(STRUCT)) {
+		Token *tkName = currentTk;
 		if (consume(ID)) {
-			return 1;
+				Symbol *s = findSymbol(&symbols, tkName->text);
+				if (s == NULL)tkerr("undefined symbol: %s", tkName->text);
+				if (s->cls != CLS_STRUCT)tkerr("%s is not a struct", tkName->text);
+				ret->typeBase = TB_STRUCT;
+				ret->s = s;
 		}
 		else tkerr("Missing ID after STRUCT.");
+	}else {
+		return 0;
 	}
-	currentTk = startTk;
-
-	return 0;
+	return 1;
 }
 
-int rule_arrayDecl() {
+int rule_arrayDecl(Type *ret) {
 	Token *startTk = currentTk;
 	if (consume(LBRACKET)) {
-		rule_expr();
+		if (rule_expr()) {
+			ret->nElements = 0; //for now we do not compute real size!!!!!!
+		}
 		if (consume(RBRACKET)) {
 			return 1;
 		}
@@ -659,9 +807,11 @@ int rule_arrayDecl() {
 	return 0;
 }
 
-int rule_typeName() {
-	if (rule_typeBase()) {
-		rule_arrayDecl();
+int rule_typeName(Type *ret) {
+	if (rule_typeBase(ret)) {
+		if (!rule_arrayDecl(ret)) {
+			ret->nElements = -1;
+		}
 		return 1;
 	}
 	return 0;
@@ -700,35 +850,73 @@ int rule_declFunc_helper() {
 
 int rule_declFunc() {
 	Token *startTk = currentTk;
-
-	if (rule_typeBase()) {
-		consume(MUL);
-		if (!rule_declFunc_helper()) {
-			currentTk = startTk; return 0;
+	Type t;
+	Token tkName;
+	if (rule_typeBase(&t)) {
+		if (consume(MUL)) {
+			t.nElements = 0;
 		}
-		return 1;
+		else {
+			t.nElements = -1;
+		}
+	}else if (consume(VOID)) {
+		t.typeBase = TB_VOID;
 	}
-	if (consume(VOID)) {
-		if (!rule_declFunc_helper())
-			tkerr("Missing ID after VOID declaration.");
-		return 1;
+	else {
+		return 0;
 	}
-
-	return 0;
+	tkName = *currentTk;
+	if (!(consume(ID))) {
+		currentTk = startTk;
+		return 0;
+	}
+	if (!consume(LPAR)) {
+		currentTk = startTk;
+		return 0;
+	}
+	if (findSymbol(&symbols, tkName.text))
+		tkerr("symbol redefinition: %s", tkName.text);
+	crtFunc = addSymbol(&symbols, tkName.text, CLS_FUNC);
+	initSymbols(&crtFunc->args); //init a list for the arguments of the function
+	crtFunc->type = t; //set function type as the one found prev
+	crtDepth++; //increase depth
+	if (rule_funcArg()) {
+		while (1) {
+			if (consume(COMMA)) {
+				if (!rule_funcArg()) tkerr("Missing func arg in stm");
+			}
+			else break;
+		}
+	}
+	if (!consume(RPAR)) tkerr("Missing RPAR in func declaration");
+	crtDepth--;
+	if (!rule_stmCompound()) tkerr("Missing compound statement");
+	deleteSymbolsAfter(&symbols, crtFunc);
+	crtFunc = NULL;
+	return 1;
 }
 
 int rule_funcArg() {
 	Token *startTk = currentTk;
-
-	if (rule_typeBase()) {
+	Type t;
+	Token tkName;
+	if (rule_typeBase(&t)) {
+		tkName = *currentTk;
 		if (consume(ID)) {
-			rule_arrayDecl();
+			if (!rule_arrayDecl(&t)) {
+				t.nElements = -1;
+			}
+			Symbol  *s = addSymbol(&symbols, tkName.text, CLS_VAR);
+			s->mem = MEM_ARG;
+			s->type = t;
+			s = addSymbol(&crtFunc->args, tkName.text, CLS_VAR);
+			s->mem = MEM_ARG;
+			s->type = t;
 			return 1;
 		}
 		else tkerr("Missing ID for function argument.");
 	}
 	currentTk = startTk;
-
 	return 0;
 }
 
@@ -824,20 +1012,21 @@ int rule_stm() {
 
 //LACC (declVar | stm)* RACC
 int rule_stmCompound() {
-	Token *startTk = currentTk;
-
+	Symbol *start = symbols.end[-1];
 	if (consume(LACC)) {
+		crtDepth++;
 		while (1) {
 			if (rule_declVar()) continue;
 			if (rule_stm())     continue;
 			else break;
 		}
-		if (consume(RACC))
+		if (consume(RACC)) {
+			crtDepth--;
+			deleteSymbolsAfter(&symbols, start);
 			return 1;
+		}
 		else tkerr("Missing RACC declaration.");
 	}
-	currentTk = startTk;
-
 	return 0;
 }
 
@@ -1076,9 +1265,9 @@ int rule_exprMul() {
 //LPAR typeName RPAR exprCast | exprUnary
 int rule_exprCast() {
 	Token *startTk = currentTk;
-
+	Type t;
 	if (consume(LPAR)) {
-		if (rule_typeName()) {
+		if (rule_typeName(&t)) {
 			if (consume(RPAR)) {
 				if (rule_exprCast()) {
 					return 1;
@@ -1227,7 +1416,7 @@ int main(int argc, char ** argv) {
 	fp = fopen(argv[1], "r");
 	if (!fp) err("Cannot open the source file. (%s)", argv[1]);
 
-//	int c;
+	//	int c;
 	tokens = (Token *)malloc(1000 * sizeof(Token));
 	while (getNextToken() != END);
 	printf("\n\nSucessfully completed the lexical analysis stage.");
