@@ -1425,7 +1425,7 @@ int rule_exprCast(RetVal *rv) {
 					rv->isCtVal = rv->isLVal = 0;
 					return 1;
 				}
-				else tkerr("Incomplete CAST declaration.");
+				else ("Incomplete CAST declaration.");
 			}
 			else tkerr("Missing RPAR expression after cast declaration.");
 		}
